@@ -533,15 +533,19 @@ def index():
 if __name__ == '__main__':
     Config.validate()
     
+    # Use PORT from environment (Cloud Run) or default from config
+    port = int(os.environ.get('PORT', Config.API_PORT))
+    host = os.environ.get('HOST', '0.0.0.0')  # Cloud Run requires 0.0.0.0
+    
     logger.info("="*60)
     logger.info("Starting Investment Platform API")
-    logger.info(f"Host: {Config.API_HOST}")
-    logger.info(f"Port: {Config.API_PORT}")
+    logger.info(f"Host: {host}")
+    logger.info(f"Port: {port}")
     logger.info(f"ML Predictions: {'Enabled' if predictor else 'Disabled'}")
     logger.info("="*60)
     
     app.run(
-        host=Config.API_HOST,
-        port=Config.API_PORT,
+        host=host,
+        port=port,
         debug=Config.DEBUG_MODE
     )
