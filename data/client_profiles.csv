@@ -1,0 +1,6 @@
+client_id,risk_tolerance,investment_goal,time_horizon_years,age
+1,moderate,growth,10,35
+2,aggressive,growth,15,28
+3,conservative,income,5,55
+4,moderate,balanced,8,42
+5,aggressive,growth,20,25

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Platform Dashboard</title>
+    <link rel="stylesheet" href="static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <h1>📊 Investment Analysis</h1>
+                <p class="subtitle">AI-Powered Portfolio Management</p>
+            </div>
+            <div class="header-controls">
+                <div class="client-selector" style="margin-right: 20px;">
+                    <label style="color: #fff; margin-right: 10px;">Client:</label>
+                    <select id="clientSelect" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 14px;">
+                        <option value="1">Client 1</option>
+                        <option value="2">Client 2</option>
+                        <option value="3">Client 3</option>
+                        <option value="4">Client 4</option>
+                        <option value="5">Client 5</option>
+                    </select>
+                </div>
+                <button id="headerUploadBtn" class="upload-header-btn" style="padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-right: 20px; display: flex; align-items: center; gap: 8px;">
+                    <span>📤</span>
+                    <span>Upload Documents</span>
+                </button>
+                <div class="status" id="apiStatus">
+                    <span class="status-indicator"></span>
+                    <span>Connecting...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="tabs">
+            <button class="tab active" data-tab="portfolio">Portfolio Overview</button>
+            <button class="tab" data-tab="predictions">Stock Predictions</button>
+            <button class="tab" data-tab="recommendations">Recommendations</button>
+            <button class="tab" data-tab="market">Market Overview</button>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="content">
+            <!-- Portfolio Tab -->
+            <div id="portfolio" class="tab-content active">
+                <div class="section-header">
+                    <h2>Portfolio Overview - <span id="currentClientName">Client 1</span></h2>
+                    <button id="viewDocumentsBtn" class="action-btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        📄 View Documents
+                    </button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Value</div>
+                        <div class="stat-value" id="totalValue">$0.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Cost</div>
+                        <div class="stat-value" id="totalCost">$0.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Gain/Loss</div>
+                        <div class="stat-value" id="gainLoss">$0.00</div>
+                        <div class="stat-percent" id="gainLossPercent">0.00%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Positions</div>
+                        <div class="stat-value" id="positionCount">0</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Holdings</h3>
+                    <div class="table-container">
+                        <table id="holdingsTable">
+                            <thead>
+                                <tr>
+                                    <th>Ticker</th>
+                                    <th>Shares</th>
+                                    <th>Cost Basis</th>
+                                    <th>Current Price</th>
+                                    <th>Value</th>
+                                    <th>Gain/Loss</th>
+                                    <th>Return %</th>
+                                </tr>
+                            </thead>
+                            <tbody id="holdingsBody">
+                                <tr><td colspan="7" class="loading">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Predictions Tab -->
+            <div id="predictions" class="tab-content">
+                <div class="section-header">
+                    <h2>Stock Predictions</h2>
+                    <div class="search-box">
+                        <input type="text" id="tickerInput" placeholder="Enter ticker (e.g., AAPL)" maxlength="5">
+                        <button id="predictBtn">Predict</button>
+                    </div>
+                </div>
+
+                <div class="card" id="predictionResult" style="display: none;">
+                    <div class="prediction-header">
+                        <h3 id="predTicker">AAPL</h3>
+                        <div class="prediction-badge" id="predDirection">UP</div>
+                    </div>
+                    
+                    <div class="prediction-details">
+                        <div class="detail-item">
+                            <span class="label">Current Price:</span>
+                            <span class="value" id="predPrice">$0.00</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">Probability UP:</span>
+                            <span class="value" id="predProbUp">0%</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">Probability DOWN:</span>
+                            <span class="value" id="predProbDown">0%</span>
+                        </div>
+                    </div>
+
+                    <div class="recommendation-box" id="recBox">
+                        <div class="rec-action" id="recAction">BUY</div>
+                        <div class="rec-strength" id="recStrength">Strong</div>
+                        <div class="rec-confidence">Confidence: <span id="recConfidence">75%</span></div>
+                    </div>
+
+                    <div class="features-grid">
+                        <h4>Key Features</h4>
+                        <div class="feature-item">
+                            <span>30-Day Return:</span>
+                            <span id="feat30d">-</span>
+                        </div>
+                        <div class="feature-item">
+                            <span>Volatility:</span>
+                            <span id="featVol">-</span>
+                        </div>
+                        <div class="feature-item">
+                            <span>RSI:</span>
+                            <span id="featRSI">-</span>
+                        </div>
+                        <div class="feature-item">
+                            <span>Sentiment:</span>
+                            <span id="featSent">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recommendations Tab -->
+            <div id="recommendations" class="tab-content">
+                <div class="section-header">
+                    <h2>Top Recommendations</h2>
+                    <div class="action-selector">
+                        <button class="action-btn active" data-action="BUY">Buy</button>
+                        <button class="action-btn" data-action="SELL">Sell</button>
+                        <button class="action-btn" data-action="HOLD">Hold</button>
+                    </div>
+                </div>
+
+                <div class="recommendations-grid" id="recommendationsGrid">
+                    <div class="loading">Loading recommendations...</div>
+                </div>
+            </div>
+
+            <!-- Market Overview Tab -->
+            <div id="market" class="tab-content">
+                <div class="section-header">
+                    <h2>Market Overview</h2>
+                    <div class="period-selector">
+                        <button class="period-btn active" data-period="1d">1D</button>
+                        <button class="period-btn" data-period="5d">5D</button>
+                        <button class="period-btn" data-period="30d">30D</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Top Performers</h3>
+                    <div class="performers-list" id="performersList">
+                        <div class="loading">Loading market data...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents Section (Modal/Overlay) -->
+            <div id="documents" class="tab-content" style="display: none;">
+                <div class="section-header">
+                    <h2>📁 Client Documents - <span id="documentsClientName">Client 1</span></h2>
+                    <button id="closeDocumentsBtn" class="action-btn" style="background: #ef4444;">
+                        ✕ Close
+                    </button>
+                </div>
+
+                <!-- Upload Section -->
+                <div class="card">
+                    <h3>📤 Upload Documents</h3>
+                    <p style="color: #64748b; margin-bottom: 20px;">Upload financial statements, investment reports, CSV files, or Excel spreadsheets for analysis</p>
+                    
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📁</div>
+                        <p class="upload-text">Drag & drop files here or click to browse</p>
+                        <p class="upload-subtext">Supported: PDF, CSV, Excel (.xlsx, .xls)</p>
+                        <p class="upload-subtext">Max file size: 10MB</p>
+                        <input type="file" id="fileInput" accept=".pdf,.csv,.xlsx,.xls,.txt,.doc,.docx" style="display: none;">
+                        <button id="browseBtn" class="upload-btn">Browse Files</button>
+                    </div>
+                    
+                    <div id="uploadProgress" style="display: none; margin-top: 20px;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <p id="uploadStatus" class="upload-status"></p>
+                    </div>
+                </div>
+
+                <!-- Files List -->
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>📄 Uploaded Documents</h3>
+                        <button id="generateReportBtn" class="action-btn">Generate Report</button>
+                    </div>
+                    
+                    <div id="documentsSummary" class="documents-summary">
+                        <div class="summary-stat">
+                            <span class="summary-label">Total Files:</span>
+                            <span class="summary-value" id="totalFiles">0</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="summary-label">Total Size:</span>
+                            <span class="summary-value" id="totalSize">0 MB</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="summary-label">Last Upload:</span>
+                            <span class="summary-value" id="lastUpload">Never</span>
+                        </div>
+                    </div>
+
+                    <div class="table-container" style="margin-top: 20px;">
+                        <table id="filesTable">
+                            <thead>
+                                <tr>
+                                    <th>Filename</th>
+                                    <th>Type</th>
+                                    <th>Size</th>
+                                    <th>Uploaded</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="filesTableBody">
+                                <tr><td colspan="5" class="loading">No documents uploaded yet</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Reports List -->
+                <div class="card" id="reportsCard" style="display: none;">
+                    <h3>📊 Generated Reports</h3>
+                    <div id="reportsList" class="reports-list">
+                        <div class="loading">No reports generated yet</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Investment Platform v1.0 | Powered by Machine Learning | API Status: <span id="footerStatus">Connected</span></p>
+        </footer>
+    </div>
+
+    <!-- Analysis Modal -->
+    <div id="analysisModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close" id="modalClose">&times;</span>
+            <h2 id="modalTitle">File Analysis</h2>
+            <div id="modalBody" class="modal-body">
+                <div class="loading">Analyzing...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="static/js/app.js"></script>
+</body>
+</html>
