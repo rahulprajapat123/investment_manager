@@ -18,6 +18,8 @@ from src.utils.database import get_database
 from src.utils.helpers import setup_logging, validate_ticker, format_currency, format_percentage
 from src.models.predict import StockPredictor
 from src.models.backtest import Backtester
+from src.models.portfolio_optimizer import ModernPortfolioTheory, GeneticAlgorithmOptimizer, optimize_client_portfolio
+from src.models.clustering import AssetClustering, analyze_portfolio_diversification
 from src.processors.document_processor import DocumentProcessor
 from src.processors.report_generator import ReportGenerator
 
@@ -556,6 +558,203 @@ def run_backtest():
     
     except Exception as e:
         logger.error(f"Backtesting error: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/optimize', methods=['POST'])
+def optimize_portfolio():
+    """
+    Optimize portfolio allocation using MPT or Genetic Algorithms.
+    
+    Request body:
+    {
+        "tickers": ["AAPL", "MSFT", "GOOGL"],
+        "method": "mpt" | "genetic",
+        "objective": "max_sharpe" | "min_volatility" | "target_return",
+        "target_return": 0.15,  // Optional, for target_return objective
+        "client_id": "C001"  // Optional, to optimize client's portfolio
+    }
+    
+    Returns: Optimal portfolio weights and performance metrics
+    """
+    try:
+        data = request.get_json()
+        
+        method = data.get('method', 'mpt')
+        client_id = data.get('client_id')
+        
+        # If client_id provided, optimize their portfolio
+        if client_id:
+            result = optimize_client_portfolio(
+                client_id,
+                method=method,
+                objective=data.get('objective', 'max_sharpe'),
+                target_return=data.get('target_return')
+            )
+        else:
+            # Optimize provided tickers
+            tickers = data.get('tickers', [])
+            if not tickers or len(tickers) < 2:
+                return jsonify({'error': 'Need at least 2 tickers for optimization'}), 400
+            
+            if method == 'mpt':
+                optimizer = ModernPortfolioTheory()
+                result = optimizer.optimize_portfolio(
+                    tickers,
+                    objective=data.get('objective', 'max_sharpe'),
+                    target_return=data.get('target_return')
+                )
+            elif method == 'genetic':
+                optimizer = GeneticAlgorithmOptimizer(
+                    population_size=data.get('population_size', 100),
+                    generations=data.get('generations', 50)
+                )
+                results = optimizer.optimize(tickers)
+                result = results[0] if results else {}
+            else:
+                return jsonify({'error': 'Invalid method. Use: mpt or genetic'}), 400
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        logger.error(f"Portfolio optimization error: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/efficient-frontier', methods=['POST'])
+def calculate_efficient_frontier():
+    """
+    Calculate efficient frontier for portfolio optimization.
+    
+    Request body:
+    {
+        "tickers": ["AAPL", "MSFT", "GOOGL", "AMZN"],
+        "n_portfolios": 100
+    }
+    
+    Returns: Efficient frontier portfolios
+    """
+    try:
+        data = request.get_json()
+        
+        tickers = data.get('tickers', [])
+        if not tickers or len(tickers) < 2:
+            return jsonify({'error': 'Need at least 2 tickers'}), 400
+        
+        n_portfolios = data.get('n_portfolios', 100)
+        
+        mpt = ModernPortfolioTheory()
+        frontier = mpt.efficient_frontier(tickers, n_portfolios=n_portfolios)
+        
+        return jsonify({
+            'tickers': tickers,
+            'efficient_frontier': frontier.to_dict('records')
+        })
+    
+    except Exception as e:
+        logger.error(f"Efficient frontier error: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/clustering', methods=['POST'])
+def cluster_assets():
+    """
+    Cluster assets for diversification analysis.
+    
+    Request body:
+    {
+        "tickers": ["AAPL", "MSFT", "GOOGL", "AMZN", "JPM", "BAC"],
+        "method": "kmeans" | "hierarchical" | "dbscan",
+        "n_clusters": 3,
+        "client_id": "C001"  // Optional, to analyze client's portfolio
+    }
+    
+    Returns: Clustering results with diversification insights
+    """
+    try:
+        data = request.get_json()
+        
+        client_id = data.get('client_id')
+        
+        # If client_id provided, analyze their portfolio
+        if client_id:
+            result = analyze_portfolio_diversification(client_id)
+        else:
+            tickers = data.get('tickers', [])
+            if not tickers or len(tickers) < 3:
+                return jsonify({'error': 'Need at least 3 tickers for clustering'}), 400
+            
+            method = data.get('method', 'kmeans')
+            n_clusters = data.get('n_clusters', 3)
+            
+            clusterer = AssetClustering(method=method)
+            result = clusterer.fit_predict(tickers, n_clusters=n_clusters)
+            
+            # Get diversified portfolio suggestion
+            diversified = clusterer.get_diversified_portfolio(
+                tickers,
+                method=data.get('selection_method', 'one_per_cluster')
+            )
+            result['diversified_portfolio'] = diversified
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        logger.error(f"Clustering error: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/neural-predict', methods=['POST'])
+def neural_network_predict():
+    """
+    Make predictions using neural network models.
+    
+    Request body:
+    {
+        "ticker": "AAPL",
+        "model": "lstm" | "ffnn"
+    }
+    
+    Returns: Neural network prediction
+    """
+    try:
+        # Import here to avoid loading TensorFlow unless needed
+        from src.models.neural_network import LSTMPredictor, FeedForwardNN, TENSORFLOW_AVAILABLE
+        
+        if not TENSORFLOW_AVAILABLE:
+            return jsonify({
+                'error': 'TensorFlow not available. Install with: pip install tensorflow'
+            }), 501
+        
+        data = request.get_json()
+        
+        ticker = data.get('ticker')
+        if not ticker:
+            return jsonify({'error': 'Ticker required'}), 400
+        
+        model_type = data.get('model', 'lstm')
+        
+        # Try to load and predict
+        try:
+            if model_type == 'lstm':
+                predictor = LSTMPredictor()
+                result = predictor.predict(ticker)
+            elif model_type == 'ffnn':
+                # FFNN prediction not yet implemented for single stocks
+                return jsonify({'error': 'FFNN prediction for single stocks not yet available'}), 501
+            else:
+                return jsonify({'error': 'Invalid model. Use: lstm or ffnn'}), 400
+            
+            return jsonify(result)
+        
+        except FileNotFoundError:
+            return jsonify({
+                'error': f'{model_type.upper()} model not trained yet. Train the model first.',
+                'instructions': f'Run: python src/models/neural_network.py'
+            }), 404
+    
+    except Exception as e:
+        logger.error(f"Neural network prediction error: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 
