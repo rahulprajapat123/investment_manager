@@ -17,6 +17,7 @@ from config import Config
 from src.utils.database import get_database
 from src.utils.helpers import setup_logging, validate_ticker, format_currency, format_percentage
 from src.models.predict import StockPredictor
+from src.models.backtest import Backtester
 from src.processors.document_processor import DocumentProcessor
 from src.processors.report_generator import ReportGenerator
 
@@ -509,6 +510,52 @@ def download_report(filename):
     
     except Exception as e:
         logger.error(f"Error downloading report: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/backtest', methods=['POST'])
+def run_backtest():
+    """
+    Run backtesting on trading strategies.
+    
+    Request body:
+    {
+        "tickers": ["AAPL", "MSFT"],
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "initial_capital": 100000,
+        "strategy": "ml" | "buy_hold" | "compare"
+    }
+    
+    Returns: Backtest results with performance metrics
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate input
+        tickers = data.get('tickers', ['AAPL', 'MSFT', 'GOOGL', 'AMZN'])
+        start_date = data.get('start_date', '2024-01-01')
+        end_date = data.get('end_date', '2024-12-31')
+        initial_capital = data.get('initial_capital', 100000)
+        strategy = data.get('strategy', 'compare')
+        
+        # Initialize backtester
+        backtester = Backtester(initial_capital=initial_capital)
+        
+        # Run requested strategy
+        if strategy == 'ml':
+            results = backtester.run_ml_strategy(tickers, start_date, end_date)
+        elif strategy == 'buy_hold':
+            results = backtester.run_buy_hold_strategy(tickers, start_date, end_date)
+        elif strategy == 'compare':
+            results = backtester.compare_strategies(tickers, start_date, end_date)
+        else:
+            return jsonify({'error': 'Invalid strategy. Use: ml, buy_hold, or compare'}), 400
+        
+        return jsonify(results)
+    
+    except Exception as e:
+        logger.error(f"Backtesting error: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 
