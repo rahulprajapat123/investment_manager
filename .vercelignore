@@ -1,0 +1,23 @@
+# Ignore backend Python files
+*.py
+src/
+flask_backend.py
+requirements.txt
+Dockerfile
+nixpacks.toml
+railway.json
+Procfile
+runtime.txt
+
+# Ignore data directories
+data/
+reports/
+temp_uploads/
+tests/
+
+# Ignore backend docs
+RAILWAY_DEPLOYMENT.md
+TECHNICAL_DOCUMENTATION.md
+
+# Keep only frontend
+!frontend/
