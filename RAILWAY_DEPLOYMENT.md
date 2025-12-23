@@ -18,6 +18,18 @@ This guide covers deploying the Investment Portfolio Manager to Railway.
 
 ---
 
+## Fixed Configuration Files
+
+The following files have been configured to fix deployment issues:
+
+1. **nixpacks.toml** - Proper Python and pip setup
+2. **Procfile** - Web server configuration
+3. **runtime.txt** - Python version specification
+4. **.dockerignore** - Exclude unnecessary files from build
+5. **requirements.txt** - All necessary dependencies including werkzeug
+
+---
+
 ## Deployment Steps
 
 ### Step 1: Create Railway Account
@@ -32,12 +44,12 @@ This guide covers deploying the Investment Portfolio Manager to Railway.
    - Click **"New Project"**
    - Select **"Deploy from GitHub repo"**
    - Choose **`investment_manager`** repository
-   - Railway will auto-detect it's a Python app
+   - Railway will auto-detect it's a Python app using Nixpacks
 
 2. **Configure Backend**
    - Service will be created automatically
-   - Railway detects `requirements.txt` and uses Nixpacks
-   - Default settings should work (Python 3.11, Gunicorn)
+   - Railway detects `requirements.txt`, `nixpacks.toml`, and `Procfile`
+   - The configuration uses Python 3.11 with Gunicorn
 
 3. **Add Environment Variables** (Optional)
    - Click on your service
@@ -58,6 +70,7 @@ This guide covers deploying the Investment Portfolio Manager to Railway.
    - Railway automatically deploys on push
    - Check **"Deployments"** tab for status
    - Wait 2-5 minutes for first deployment
+   - Monitor build logs for any errors
 
 ### Step 3: Deploy Frontend
 
@@ -359,6 +372,41 @@ def serve_frontend(path):
         return send_from_directory('frontend/dist', path)
     return send_from_directory('frontend/dist', 'index.html')
 ```
+
+---
+
+## Troubleshooting Common Errors
+
+### Error: "pip: command not found"
+**Fixed!** This was caused by an incomplete nixpacks configuration. The new `nixpacks.toml` properly initializes Python and pip.
+
+**Solution Applied:**
+- Updated [nixpacks.toml](nixpacks.toml) with proper Python setup
+- Added `python -m pip` command to ensure pip is available
+- Created [Procfile](Procfile) and [runtime.txt](runtime.txt) for better compatibility
+
+### Error: "Usage of undefined variable '$NIXPACKS_PATH'"
+**Fixed!** This error no longer occurs with the simplified nixpacks configuration.
+
+### Error: "Build process failed"
+**Checklist:**
+- Ensure all files are committed and pushed to GitHub
+- Check Railway build logs for specific errors
+- Verify `requirements.txt` has all dependencies
+- Make sure Python version matches (3.11)
+
+### Error: "Application failed to respond"
+**Solutions:**
+- Check that Flask app binds to `0.0.0.0:$PORT` (already configured)
+- Verify environment variables are set correctly
+- Check Railway logs for runtime errors
+- Ensure directories (`data/`, `reports/`, `temp_uploads/`) are created on startup
+
+### Error: "Module not found"
+**Solutions:**
+- Verify all imports in `flask_backend.py` are correct
+- Check that `src/` directory is properly added to Python path
+- Ensure all required packages are in `requirements.txt`
 
 ---
 
