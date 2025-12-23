@@ -23,7 +23,7 @@ import axios from 'axios';
 const { Dragger } = Upload;
 const { Option } = Select;
 
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const UploadPage = () => {
   const [form] = Form.useForm();

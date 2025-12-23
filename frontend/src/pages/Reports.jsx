@@ -18,7 +18,7 @@ import {
 import axios from 'axios';
 import dayjs from 'dayjs';
 
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const Reports = () => {
   const [clients, setClients] = useState([]);
