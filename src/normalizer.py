@@ -31,6 +31,11 @@ def normalize_trade_book(ingested_data: Dict) -> pd.DataFrame:
     broker = ingested_data['broker']
     account = ingested_data['metadata'].get('account', '')
     
+    # Try to identify broker from DP ID if broker is generic
+    if 'Platform_Unknown' in broker or 'Account_' in broker:
+        # Will attempt to extract DP ID below to improve broker identification
+        pass
+    
     if df.empty:
         return create_empty_trades_df()
     

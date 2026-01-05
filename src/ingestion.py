@@ -41,7 +41,10 @@ def extract_client_broker_from_path(file_path: str) -> Tuple[str, str]:
     """
     Extract client_id and broker from file path.
     
-    Expected structure: .../C001/Charles_Schwab/file.xlsx
+    Expected structures: 
+    - .../C001/Charles_Schwab/file.xlsx (broker as subfolder)
+    - .../C001/Uploaded_Files/file.xlsx (generic upload folder)
+    - .../C001/tradeBook_HDFC_Bank.xlsx (broker in filename)
     
     Args:
         file_path: Full path to file
@@ -50,6 +53,7 @@ def extract_client_broker_from_path(file_path: str) -> Tuple[str, str]:
         Tuple of (client_id, broker)
     """
     path_parts = Path(file_path).parts
+    file_name = Path(file_path).stem  # filename without extension
     
     # Find client folder (e.g., C001, C002)
     client_id = None
@@ -58,16 +62,69 @@ def extract_client_broker_from_path(file_path: str) -> Tuple[str, str]:
     for i, part in enumerate(path_parts):
         if re.match(r'^C\d{3,}$', part):
             client_id = part
-            if i + 1 < len(path_parts):
-                broker = path_parts[i + 1]
+            # Check if next part is a subdirectory (not a file)
+            if i + 1 < len(path_parts) and i + 2 < len(path_parts):
+                # Has a subfolder between client and file
+                subfolder = path_parts[i + 1]
+                # Ignore generic folder names like "Uploaded_Files"
+                if subfolder not in ['Uploaded_Files', 'uploads', 'files', 'data']:
+                    broker = subfolder
             break
     
     if not client_id:
         raise ValueError(f"Could not extract client_id from path: {file_path}")
+    
+    # If broker not found in path, try to extract from filename
     if not broker:
-        raise ValueError(f"Could not extract broker from path: {file_path}")
+        # Look for pattern: accountNumber_type or type_BrokerName
+        if '_' in file_name:
+            parts = file_name.split('_')
+            # If multiple parts, check for broker names
+            for part in parts:
+                part_clean = part.strip().lower()
+                # Check for known broker keywords
+                if any(keyword in part_clean for keyword in ['zerodha', 'schwab', 'fidelity', 'hdfc', 'icici', 'groww']):
+                    broker = part.replace('_', ' ')
+                    break
+        
+        # Still no broker? Try to extract account number as identifier
+        if not broker:
+            # Look for numeric account patterns in filename
+            account_match = re.search(r'(\d{10,})', file_name)
+            if account_match:
+                broker = f"Account_{account_match.group(1)[:6]}"
+            else:
+                broker = "Platform_Unknown"
     
     return client_id, broker
+
+
+def read_csv_file(file_path: str) -> pd.DataFrame:
+    """
+    Read CSV file and handle various delimiters.
+    
+    Args:
+        file_path: Path to CSV file
+    
+    Returns:
+        DataFrame with CSV data
+    """
+    try:
+        # Try reading with automatic delimiter detection
+        df = pd.read_csv(file_path, sep=None, engine='python')
+        return df
+    except:
+        # Try common delimiters
+        for delimiter in [',', '\t', ';', '|']:
+            try:
+                df = pd.read_csv(file_path, sep=delimiter)
+                if len(df.columns) > 1:  # Valid if we got multiple columns
+                    return df
+            except:
+                continue
+        
+        # If all fail, return empty DataFrame
+        return pd.DataFrame()
 
 
 def read_excel_with_tab_detection(file_path: str) -> pd.DataFrame:
@@ -197,6 +254,7 @@ def extract_metadata(df: pd.DataFrame) -> Dict[str, str]:
 def read_broker_file(file_path: str) -> Dict:
     """
     Read a broker export file and return structured data.
+    Supports Excel (.xlsx, .xls) and CSV (.csv) files.
     
     Args:
         file_path: Path to broker file
@@ -217,8 +275,14 @@ def read_broker_file(file_path: str) -> Dict:
     # Extract client and broker from path
     client_id, broker = extract_client_broker_from_path(file_path)
     
-    # Read Excel with tab detection
-    df = read_excel_with_tab_detection(file_path)
+    # Read file based on extension
+    file_extension = os.path.splitext(file_path)[1].lower()
+    
+    if file_extension == '.csv':
+        df = read_csv_file(file_path)
+    else:
+        # Read Excel with tab detection
+        df = read_excel_with_tab_detection(file_path)
     
     # Extract metadata
     metadata = extract_metadata(df)

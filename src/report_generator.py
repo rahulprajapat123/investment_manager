@@ -99,8 +99,13 @@ def compute_current_holdings(trades_df: pd.DataFrame, client_id: str) -> pd.Data
         
         # Get platform and currency (from first trade)
         first_trade = symbol_trades.iloc[0]
-        platform = first_trade['broker']
         currency = first_trade['currency']
+        
+        # Get all unique brokers for this symbol (for better tracking)
+        all_brokers = symbol_trades['broker'].unique().tolist() if 'broker' in symbol_trades.columns else [first_trade['broker']]
+        platform = all_brokers[0]  # Use first broker as primary
+        # Store all brokers in metadata (if multiple)
+        platform_note = ', '.join(all_brokers) if len(all_brokers) > 1 else platform
         
         holdings.append({
             'Asset Name': symbol,
@@ -160,14 +165,26 @@ def generate_summary_sheet(writer, workbook, client_id: str, trades_df: pd.DataF
     net_total_return = sum_decimals(realized_pnl, unrealized_pnl)
     net_return_pct = divide_decimal(net_total_return, total_invested) * 100 if total_invested != 0 else Decimal("0")
     
-    # Number of platforms
-    num_platforms = holdings_df['Platform'].nunique() if not holdings_df.empty else 0
+    # Number of platforms - Count unique brokers from TRADES data (more accurate)
+    # This captures all platforms used, not just those with current holdings
+    client_trades = trades_df[trades_df['client_id'] == client_id] if not trades_df.empty else pd.DataFrame()
+    num_platforms = client_trades['broker'].nunique() if not client_trades.empty and 'broker' in client_trades.columns else 0
     
     # Asset classes
     num_asset_classes = holdings_df['Asset Class'].nunique() if not holdings_df.empty else 0
     
     # Base currency (most common)
     base_currency = holdings_df['Currency'].mode()[0] if not holdings_df.empty else 'USD'
+    
+    # Create broker/platform breakdown
+    platform_breakdown = []
+    if not client_trades.empty and 'broker' in client_trades.columns:
+        broker_stats = client_trades.groupby('broker').agg({
+            'symbol': 'nunique',  # unique stocks
+            'qty': 'count'  # number of trades
+        }).reset_index()
+        broker_stats.columns = ['Broker', 'Unique Stocks', 'Number of Trades']
+        platform_breakdown = broker_stats.to_dict('records')
     
     # Create summary data
     summary_data = [
@@ -192,8 +209,20 @@ def generate_summary_sheet(writer, workbook, client_id: str, trades_df: pd.DataF
         ['Number of Platforms', num_platforms],
         ['Asset Classes', num_asset_classes],
         ['Base Currency', base_currency],
-        ['Cost Basis Method', 'FIFO']
+        ['Cost Basis Method', 'FIFO'],
+        ['', ''],
+        ['Platform Breakdown', ''],
     ]
+    
+    # Add broker breakdown details
+    if platform_breakdown:
+        for broker_info in platform_breakdown:
+            summary_data.append([
+                f"  - {broker_info['Broker']}", 
+                f"{broker_info['Unique Stocks']} stocks, {broker_info['Number of Trades']} trades"
+            ])
+    else:
+        summary_data.append(['  No platform data', ''])
     
     summary_df = pd.DataFrame(summary_data, columns=['Portfolio Analytics Report', 'Unnamed: 1'])
     summary_df.to_excel(writer, sheet_name='Summary', index=False, header=False)
@@ -339,6 +368,73 @@ def generate_calculations_sheet(writer, workbook, trades_df: pd.DataFrame,
             worksheet.write(0, col_num, value, header_format)
 
 
+def compute_holdings_by_broker(trades_df: pd.DataFrame, client_id: str) -> pd.DataFrame:
+    """
+    Compute holdings split by broker - each stock on each platform gets its own row.
+    """
+    client_trades = trades_df[trades_df['client_id'] == client_id].copy()
+    
+    if client_trades.empty:
+        return pd.DataFrame()
+    
+    holdings = []
+    
+    # Group by symbol AND broker
+    for (symbol, broker), group in client_trades.groupby(['symbol', 'broker']):
+        symbol_broker_trades = group.sort_values('date')
+        
+        # Calculate net position for this symbol on this broker
+        buy_trades = symbol_broker_trades[symbol_broker_trades['action'] == 'Buy']
+        sell_trades = symbol_broker_trades[symbol_broker_trades['action'] == 'Sell']
+        
+        total_buy_qty = sum_decimals(*buy_trades['qty'].tolist()) if not buy_trades.empty else Decimal("0")
+        total_sell_qty = sum_decimals(*sell_trades['qty'].tolist()) if not sell_trades.empty else Decimal("0")
+        
+        net_qty = subtract_decimal(total_buy_qty, total_sell_qty)
+        
+        # Skip if position is closed or negative
+        if net_qty <= 0:
+            continue
+        
+        # Calculate weighted average buy price
+        total_buy_value = sum_decimals(*[multiply_decimal(row['qty'], row['price']) 
+                                         for _, row in buy_trades.iterrows()]) if not buy_trades.empty else Decimal("0")
+        
+        avg_buy_price = divide_decimal(total_buy_value, total_buy_qty) if total_buy_qty > 0 else Decimal("0")
+        
+        # Current value
+        last_price = symbol_broker_trades.iloc[-1]['price']
+        current_value = multiply_decimal(net_qty, last_price)
+        
+        # Total invested
+        total_invested = multiply_decimal(net_qty, avg_buy_price)
+        
+        # Unrealized P/L
+        unrealized_pnl = subtract_decimal(current_value, total_invested)
+        unrealized_pnl_pct = divide_decimal(unrealized_pnl, total_invested) * 100 if total_invested != 0 else Decimal("0")
+        
+        currency = symbol_broker_trades.iloc[0]['currency']
+        
+        holdings.append({
+            'Asset Name': symbol,
+            'Broker': broker,
+            'Asset Class': 'Equity',
+            'Currency': currency,
+            'Quantity': round_decimal(net_qty),
+            'Average Cost': round_decimal(avg_buy_price),
+            'Current Price': round_decimal(last_price),
+            'Current Value': round_decimal(current_value),
+            'Total Invested': round_decimal(total_invested),
+            'Unrealized P/L': round_decimal(unrealized_pnl),
+            'P/L %': round_decimal(unrealized_pnl_pct),
+        })
+    
+    if not holdings:
+        return pd.DataFrame()
+    
+    return pd.DataFrame(holdings)
+
+
 def generate_client_report(client_id: str,
                            trades_df: pd.DataFrame,
                            cg_df: pd.DataFrame,
@@ -358,8 +454,11 @@ def generate_client_report(client_id: str,
     """
     output_path = Path(output_dir) / f"{client_id}_portfolio_report.xlsx"
     
-    # Compute holdings
+    # Compute holdings (aggregated view)
     holdings_df = compute_current_holdings(trades_df, client_id)
+    
+    # Compute holdings by broker (detailed view)
+    holdings_by_broker_df = compute_holdings_by_broker(trades_df, client_id)
     
     # Create Excel writer with xlsxwriter engine
     with pd.ExcelWriter(output_path, engine='xlsxwriter') as writer:
@@ -421,10 +520,47 @@ def generate_client_report(client_id: str,
                 ))
                 worksheet.set_column(idx, idx, max_len + 2)
         
-        # Sheet 3: Allocations
+        # Sheet 3: Holdings by Broker (detailed multi-broker view)
+        if not holdings_by_broker_df.empty:
+            holdings_broker_excel = prepare_df_for_excel(holdings_by_broker_df)
+            holdings_broker_excel.to_excel(writer, sheet_name='Holdings by Broker', index=False)
+            worksheet = writer.sheets['Holdings by Broker']
+            
+            # Format header
+            for col_num, value in enumerate(holdings_broker_excel.columns.values):
+                worksheet.write(0, col_num, value, header_format)
+            
+            # Format money columns
+            money_cols = ['Average Cost', 'Current Price', 'Current Value', 'Total Invested', 'Unrealized P/L']
+            for col in money_cols:
+                if col in holdings_broker_excel.columns:
+                    col_idx = holdings_broker_excel.columns.get_loc(col)
+                    for row_num in range(1, len(holdings_broker_excel) + 1):
+                        worksheet.write(row_num, col_idx, 
+                                      holdings_broker_excel.iloc[row_num-1][col],
+                                      money_format)
+            
+            # Format percent columns
+            percent_cols = ['P/L %']
+            for col in percent_cols:
+                if col in holdings_broker_excel.columns:
+                    col_idx = holdings_broker_excel.columns.get_loc(col)
+                    for row_num in range(1, len(holdings_broker_excel) + 1):
+                        val = holdings_broker_excel.iloc[row_num-1][col] / 100
+                        worksheet.write(row_num, col_idx, val, percent_format)
+            
+            # Auto-adjust column widths
+            for idx, col in enumerate(holdings_broker_excel.columns):
+                max_len = min(30, max(
+                    holdings_broker_excel[col].astype(str).map(len).max(),
+                    len(str(col))
+                ))
+                worksheet.set_column(idx, idx, max_len + 2)
+        
+        # Sheet 4: Allocations
         generate_allocations_sheet(writer, workbook, holdings_df)
         
-        # Sheet 4: Calculations (detailed raw data)
+        # Sheet 5: Calculations (detailed raw data)
         generate_calculations_sheet(writer, workbook, trades_df, cg_df, header_format, money_format)
     
     print(f"Generated report: {output_path}")

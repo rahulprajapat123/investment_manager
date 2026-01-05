@@ -79,9 +79,13 @@ def get_clients():
 def upload_files():
     try:
         client_id = request.form.get('client_id')
+        broker = request.form.get('broker', 'Unknown_Platform')
         
         if not client_id:
             return jsonify({"error": "Client ID is required"}), 400
+        
+        if not broker:
+            return jsonify({"error": "Broker/Platform is required"}), 400
         
         if 'files' not in request.files:
             return jsonify({"error": "No files provided"}), 400
@@ -91,14 +95,14 @@ def upload_files():
         if not client_id.startswith('C'):
             client_id = f"C{client_id.zfill(3)}"
         
-        broker = "Uploaded_Files"
+        # Use the provided broker name instead of hardcoded "Uploaded_Files"
         client_dir = DATA_DIR / client_id / broker
         client_dir.mkdir(parents=True, exist_ok=True)
         
         uploaded_files = []
         
         for file in files:
-            if file.filename and file.filename.endswith(('.xlsx', '.xls')):
+            if file.filename and file.filename.endswith(('.xlsx', '.xls', '.csv')):
                 filename = secure_filename(file.filename)
                 file_path = client_dir / filename
                 file.save(file_path)
@@ -112,8 +116,9 @@ def upload_files():
         return jsonify({
             "success": True,
             "client_id": client_id,
+            "broker": broker,
             "files": uploaded_files,
-            "message": f"Successfully uploaded {len(uploaded_files)} files"
+            "message": f"Successfully uploaded {len(uploaded_files)} files for {client_id} ({broker})"
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
