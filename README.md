@@ -1,39 +1,66 @@
 # Portfolio Analytics Platform
 
-A modern web application for portfolio data ingestion, analysis, and report generation built with **FastAPI** and **React**.
+A modern web application for multi-broker portfolio data ingestion, analysis, and comprehensive report generation built with **Flask** and **React**.
+
+## ✨ Latest Updates (Jan 2026)
+
+### 🎯 Multi-Platform Upload Feature
+- **Simultaneous multi-broker file upload** - Upload files from multiple platforms at once
+- **Auto-detection of brokers** from filenames (Zerodha, Groww, HDFC, ICICI, Schwab, Fidelity, etc.)
+- **Manual broker assignment** via intuitive file-broker mapping table
+- **Automatic folder organization** by broker
+
+### 🐛 Critical Fixes
+- **Platform count accuracy** - Fixed issue where platform count always showed 1, now correctly counts all brokers from trades data
+- **Multi-broker stock tracking** - Added "Holdings by Broker" sheet showing positions split by platform
+- **Broker detection improvements** - Enhanced extraction from file paths and names
+- **Decimal precision verified** - All numeric calculations use Decimal for accuracy
+
+### 📊 Enhanced Reports
+- New **"Holdings by Broker"** sheet - See each stock's position on each platform separately
+- **Platform breakdown** in Summary sheet - Shows trades and stocks per broker
+- **Aggregated + detailed views** - Both portfolio-level and broker-level analysis
+- **Accurate platform metrics** - Counts all brokers used, not just current holdings
 
 ## 🏗️ Architecture
 
-- **Backend**: FastAPI (Python) - RESTful API for data processing
-- **Frontend**: React + Vite + Ant Design - Modern responsive UI
-- **Data Processing**: Python pipeline (ingestion → normalization → validation → aggregation → reporting)
+- **Backend**: Flask (Python) - RESTful API for data processing and file handling
+- **Frontend**: React + Vite + Ant Design - Modern responsive UI with multi-file upload
+- **Data Processing**: Python pipeline with Decimal precision (ingestion → normalization → validation → aggregation → reporting)
+- **Multi-Broker Support**: Automatic broker detection and separate folder organization
 
 ## 📁 Project Structure
 
 ```
 portfolio-analytics/
-├── backend/               # FastAPI backend
-│   ├── main.py           # API endpoints
-│   └── requirements.txt  # Backend dependencies
+├── flask_backend.py      # Flask API server
 ├── frontend/             # React frontend
 │   ├── src/
-│   │   ├── pages/       # Dashboard, Upload, Reports
+│   │   ├── pages/       
+│   │   │   ├── Dashboard.jsx    # Client management & report generation
+│   │   │   └── Upload.jsx       # Multi-platform file upload with broker mapping
 │   │   ├── App.jsx      # Main app component
 │   │   └── main.jsx     # Entry point
 │   ├── package.json     # Frontend dependencies
 │   └── vite.config.js   # Vite configuration
 ├── src/                  # Core data processing modules
-│   ├── ingestion.py     # Data ingestion
-│   ├── normalizer.py    # Data normalization
+│   ├── ingestion.py     # Multi-broker data ingestion
+│   ├── normalizer.py    # Data normalization with broker tracking
 │   ├── validator.py     # Data validation
 │   ├── aggregator.py    # Metric aggregation
-│   └── report_generator.py  # Excel report generation
-├── data/                 # Client data storage
+│   ├── report_generator.py      # Excel report generation with multi-broker sheets
+│   └── holdings_multibroker.py  # Multi-broker position tracking
+├── data/                 # Client data storage (organized by broker)
 │   └── C001/            # Client folders
-│       ├── Charles_Schwab/
-│       ├── Fidelity/
-│       └── ...
-├── reports/              # Generated reports
+│       ├── Charles_Schwab/      # Files uploaded for this broker
+│       ├── Fidelity/            # Files uploaded for this broker
+│       └── Groww/               # Files uploaded for this broker
+├── reports/              # Generated Excel reports
+├── verify_numeric_calculations.py    # Verification script for calculation accuracy
+├── verify_c004_completeness.py      # Script to verify aggregation completeness
+├── test_multiplatform.py            # Multi-platform upload testing
+├── MULTIPLATFORM_UPLOAD_GUIDE.md    # Detailed guide for multi-platform features
+├── C004_VERIFICATION_REPORT.md      # Sample verification report
 └── requirements.txt      # Python dependencies
 ```
 
@@ -88,13 +115,13 @@ cd ..
 
 ```powershell
 # Activate virtual environment
-.\venv\Scripts\Activate
+.\venv311\Scripts\Activate
 
-# Run FastAPI server
-python backend\main.py
+# Run Flask server
+python flask_backend.py
 ```
 
-Backend will run on: **http://localhost:8000**
+Backend will run on: **http://127.0.0.1:5000**
 
 ### Start Frontend (Terminal 2)
 
@@ -110,16 +137,19 @@ Frontend will run on: **http://localhost:3000**
 
 ## 🌐 Usage
 
+### Multi-Platform Upload (NEW!)
+
 1. **Open Browser**: Navigate to http://localhost:3000
 
-2. **Upload Data**:
+2. **Upload Data from Multiple Brokers**:
    - Click "Upload Data" in sidebar
-   - Enter Client ID (e.g., C005 or just 5)
-   - Select Broker from dropdown
-   - Upload Excel files (trade books, capital gains, holdings)
-   - Click "Upload Files"
+   - Enter Client ID (e.g., C003)
+   - **Select multiple files from different platforms at once**
+   - System auto-detects brokers from filenames (or assign manually)
+   - Review file-broker mapping table
+   - Click "Upload X files from Y platforms"
 
-3. **Generate Reports**:
+3. **Generate Aggregated Reports**:
    - Go to "Dashboard"
    - Find your client in the table
    - Click "Generate Report" button
@@ -130,76 +160,110 @@ Frontend will run on: **http://localhost:3000**
    - Click "Download" button for any client
    - Report downloads as Excel file
 
-## 📊 Features
+## 📊 Key Features
 
-### Dashboard
+### Multi-Platform Upload ⭐ NEW
+- **Simultaneous upload from multiple brokers** - No need to upload each platform separately
+- **Auto-detection** - System recognizes broker from filename
+- **File-Broker mapping table** - Visual interface to assign each file to its broker
+- **Batch processing** - All platforms processed together
+- **Smart organization** - Files automatically organized in broker-specific folders
+
+### Advanced Dashboard
 - View all clients at a glance
 - See report generation status
-- Track data files per client
-- One-click report generation
+- **Platform count** - Shows correct number of brokers used
+- Track data files per client and per broker
+- One-click report generation with job tracking
 - Real-time processing status
+
+### Enhanced Reports
+- **Holdings Sheet** - Aggregated positions across all brokers
+- **Holdings by Broker Sheet** ⭐ NEW - Detailed breakdown per platform
+- **Summary Sheet** - Platform count, breakdown, and key metrics
+- **Allocations Sheet** - Asset allocation across brokers
+- **Calculations Sheet** - All trades and capital gains with broker info
 
 ### Upload Interface
 - Drag-and-drop file upload
-- Multi-file support
-- Broker selection
+- Multi-file support (upload 10+ files at once)
+- **Broker auto-detection and manual assignment**
 - Client ID validation
-- File type validation (Excel only)
+- File type validation (Excel, CSV)
+- Upload progress tracking
 
-### Reports Management
-- View all generated reports
-- Search and filter capabilities
-- Download reports
-- Sort by date, status, client ID
+### Data Accuracy
+- **Decimal precision** - All calculations use Decimal arithmetic
+- **Comprehensive validation** - Data quality checks at every step
+- **Verification scripts** - Tools to verify calculation accuracy
+- **Multi-broker aggregation** - Correct handling of stocks across platforms
 
 ## 🔌 API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/` | Health check |
-| GET | `/api/clients` | List all clients |
-| GET | `/api/brokers` | List supported brokers |
-| POST | `/api/upload` | Upload client files |
-| POST | `/api/process/{client_id}` | Generate report for client |
-| GET | `/api/jobs/{job_id}` | Check job status |
-| GET | `/api/reports/{client_id}` | Download client report |
-| DELETE | `/api/clients/{client_id}` | Delete client data |
+| GET | `/api/clients` | List all clients with platform counts |
+| POST | `/api/upload` | Upload files with `client_id` and `broker` params |
+| POST | `/api/generate-report/{client_id}` | Process all data and generate Excel report |
+| GET | `/api/report/{client_id}` | Download generated Excel report |
+| DELETE | `/api/client/{client_id}` | Delete client data and reports |
+
+### Upload Endpoint Details
+```json
+POST /api/upload
+Content-Type: multipart/form-data
+
+Parameters:
+- client_id: string (e.g., "C001")
+- broker: string (e.g., "Charles_Schwab")
+- files: files[] (tradebook.csv, holdings.csv)
+```
 
 ## 📦 Supported Brokers
 
-- Charles Schwab
-- Fidelity
-- Groww
-- HDFC Bank
-- ICICI Direct
-- Zerodha
+The system auto-detects these brokers from filenames:
+
+- **Charles Schwab** - Detects "schwab", "charles"
+- **Fidelity** - Detects "fidelity"
+- **Groww** - Detects "groww"
+- **HDFC Bank** - Detects "hdfc"
+- **ICICI Direct** - Detects "icici"
+- **Zerodha** - Detects "zerodha"
+- **Upstox** - Detects "upstox"
+- **Angel One** - Detects "angel"
+
+Manual assignment available for any broker name.
 
 ## 🔧 Technology Stack
 
 ### Backend
-- **FastAPI** - Modern Python web framework
-- **Uvicorn** - ASGI server
-- **Pandas** - Data processing
-- **OpenPyXL** - Excel file handling
-- **Pandera** - Data validation
+- **Flask** - Python web framework
+- **Pandas** - Data processing with Decimal precision
+- **OpenPyXL** - Excel report generation
+- **Python 3.14.0** - Runtime environment
+- **Decimal Arithmetic** - High-precision financial calculations
 
 ### Frontend
 - **React 18** - UI library
-- **Vite** - Build tool
+- **Vite** - Build tool and dev server
 - **Ant Design** - UI component library
 - **Axios** - HTTP client
-- **React Router** - Navigation
+- **React Router DOM** - Navigation
 
 ## 🛠️ Development
 
 ### Backend Development
 
 ```powershell
-# Run with auto-reload
-python backend\main.py
+# Activate virtual environment
+.\venv311\Scripts\activate
+
+# Run Flask server
+python flask_backend.py
 ```
 
-API docs available at: http://localhost:8000/docs
+Server runs at: http://127.0.0.1:5000
 
 ### Frontend Development
 
@@ -208,7 +272,7 @@ cd frontend
 npm run dev
 ```
 
-Hot-reload enabled automatically
+Dev server runs at: http://localhost:3000 with hot-reload
 
 ### Build for Production
 
@@ -221,21 +285,59 @@ npm run build
 npm run preview
 ```
 
+## 🧪 Testing & Verification
+
+### Verification Scripts
+The project includes comprehensive testing tools:
+
+- `verify_numeric_calculations.py` - Check Decimal precision in all calculations
+- `verify_c004_completeness.py` - Verify aggregation accuracy for C004 client
+- `test_multiplatform.py` - Test multi-broker processing
+- `comprehensive_verify.py` - Full system verification
+- Additional scripts in root directory for debugging specific issues
+
+### Run Verification
+```powershell
+# Verify calculations
+python verify_numeric_calculations.py
+
+# Verify C004 aggregation
+python verify_c004_completeness.py
+
+# Test multi-platform upload
+python test_multiplatform.py
+```
+
 ## 📝 Data Format
 
-Upload Excel files should contain:
-- **Trade Book**: Date, Symbol, Action (Buy/Sell), Quantity, Price
-- **Capital Gains**: Symbol, Buy Date, Sell Date, Gain/Loss
-- **Holdings**: Symbol, Quantity, Current Price
+### Required Files Per Broker
+Each broker upload should include:
+
+1. **Trade Book** (tradebook.csv or tradebook.xlsx):
+   - Columns: Date, Symbol, Action (Buy/Sell), Quantity, Price
+   - Action can be: BUY, SELL, buy, sell
+
+2. **Holdings** (holdings.csv or holdings.xlsx):
+   - Columns: Symbol, Quantity, Current Price
+   - Represents current open positions
+
+### CSV Format Support
+Both CSV and Excel formats are supported. CSV files use standard parsing with automatic delimiter detection.
+
+### File Naming
+Files are auto-organized by broker. You can name them:
+- `tradebook_zerodha.csv` → Auto-detected as Zerodha
+- `holdings_groww.xlsx` → Auto-detected as Groww
+- Or manually assign via the upload interface
 
 ## 🐛 Troubleshooting
 
 ### Port Already in Use
 
-**Backend (8000)**:
+**Backend (5000)**:
 ```powershell
 # Find process using port
-netstat -ano | findstr :8000
+netstat -ano | findstr :5000
 # Kill process
 taskkill /PID <PID> /F
 ```
@@ -248,23 +350,49 @@ netstat -ano | findstr :3000
 taskkill /PID <PID> /F
 ```
 
-### CORS Errors
-- Ensure backend is running on port 8000
-- Check CORS middleware in `backend/main.py`
+### Connection Refused (ERR_CONNECTION_REFUSED)
+- Ensure Flask backend is running: `python flask_backend.py`
+- Check backend console for errors
+- Verify backend is accessible at http://127.0.0.1:5000
 
-### Upload Fails
-- Verify file is Excel format (.xlsx or .xls)
-- Check client ID format (C001 or just 1)
-- Ensure broker is selected
+### Multi-Platform Upload Issues
+- Ensure all files are CSV or Excel format
+- Check that each file is assigned to a broker in the table
+- Verify broker names don't contain special characters
+- Check browser console for detailed error messages
 
-## 📈 Future Enhancements
+### Report Generation Failures
+- Verify all required files are uploaded (tradebook + holdings)
+- Check data format matches expected columns
+- Review backend console for detailed error messages
+- Use verification scripts to check data integrity
 
+### Platform Count Shows Wrong Number
+This was a known bug (fixed). If you still see issues:
+- Regenerate the report
+- Check that `client_trades['broker'].nunique()` is used in report_generator.py
+- Verify broker names are consistent across files
+
+## 📈 Recent Enhancements
+
+### ✅ Completed Features
+- [x] Multi-broker simultaneous upload with file-broker mapping
+- [x] Auto-detection of brokers from filenames
+- [x] Platform count accuracy fix (uses trades data instead of holdings)
+- [x] "Holdings by Broker" detailed sheet in reports
+- [x] CSV file format support
+- [x] Comprehensive verification scripts for data accuracy
+- [x] Decimal precision for all financial calculations
+- [x] Enhanced broker extraction logic
+
+### 🚀 Future Enhancements
 - [ ] User authentication (JWT)
-- [ ] Redis/Celery for async tasks
-- [ ] Real-time WebSocket updates
-- [ ] Database integration (PostgreSQL)
+- [ ] Database integration (PostgreSQL/MongoDB)
+- [ ] Real-time WebSocket updates for report generation
+- [ ] Advanced analytics and charting
 - [ ] Docker containerization
-- [ ] Advanced analytics dashboard
+- [ ] Tax optimization recommendations
+- [ ] Historical performance tracking
 - [ ] Email notifications
 - [ ] Multi-user support
 
