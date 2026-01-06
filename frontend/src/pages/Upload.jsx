@@ -50,17 +50,19 @@ const UploadPage = () => {
     multiple: true,
     fileList,
     beforeUpload: (file) => {
-      // Check file type
+      // Check file type - accept Excel, CSV, and PDF files
       const isValidFile =
         file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
         file.type === 'application/vnd.ms-excel' ||
         file.type === 'text/csv' ||
+        file.type === 'application/pdf' ||
         file.name.endsWith('.xlsx') ||
         file.name.endsWith('.xls') ||
-        file.name.endsWith('.csv');
+        file.name.endsWith('.csv') ||
+        file.name.endsWith('.pdf');
 
       if (!isValidFile) {
-        message.error(`${file.name} is not a valid Excel or CSV file`);
+        message.error(`${file.name} is not a valid Excel, CSV, or PDF file`);
         return Upload.LIST_IGNORE;
       }
 
@@ -242,7 +244,7 @@ const UploadPage = () => {
               <li>Click Upload - all platforms will be processed together</li>
               <li>Reports will aggregate data across all brokers</li>
             </ol>
-            <p style={{ marginTop: 8 }}>✓ Supported: .xlsx, .xls, .csv files</p>
+            <p style={{ marginTop: 8 }}>✓ Supported: .xlsx, .xls, .csv, .pdf files</p>
           </div>
         }
         type="info"

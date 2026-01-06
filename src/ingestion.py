@@ -1,6 +1,6 @@
 """
 Data ingestion module for reading broker export files.
-Handles Excel files with tab-separated data within single columns.
+Handles Excel, CSV, and PDF files with tab-separated data within single columns.
 """
 import os
 import re
@@ -9,6 +9,7 @@ from typing import Dict, List, Tuple, Optional
 import pandas as pd
 import openpyxl
 from decimal import Decimal
+from src.pdf_parser import read_pdf_broker_file, extract_metadata_from_pdf
 
 
 def detect_file_type(file_path: str) -> Optional[str]:
@@ -254,7 +255,7 @@ def extract_metadata(df: pd.DataFrame) -> Dict[str, str]:
 def read_broker_file(file_path: str) -> Dict:
     """
     Read a broker export file and return structured data.
-    Supports Excel (.xlsx, .xls) and CSV (.csv) files.
+    Supports Excel (.xlsx, .xls), CSV (.csv), and PDF (.pdf) files.
     
     Args:
         file_path: Path to broker file
@@ -280,6 +281,32 @@ def read_broker_file(file_path: str) -> Dict:
     
     if file_extension == '.csv':
         df = read_csv_file(file_path)
+    elif file_extension == '.pdf':
+        # Read PDF file
+        df = read_pdf_broker_file(file_path)
+        # Extract metadata from PDF
+        pdf_metadata = extract_metadata_from_pdf(file_path)
+        metadata = pdf_metadata
+        
+        # For PDFs, data might already be clean, find data start
+        data_start = find_data_start_row(df, file_type)
+        if data_start >= 0:
+            data_df = df.iloc[data_start:].copy()
+            data_df.columns = data_df.iloc[0]
+            data_df = data_df.iloc[1:].reset_index(drop=True)
+            data_df = data_df.dropna(how='all')
+        else:
+            # If no clear header found, assume first row is header
+            data_df = df
+        
+        return {
+            'client_id': client_id,
+            'broker': broker,
+            'file_type': file_type,
+            'metadata': metadata,
+            'data': data_df,
+            'file_path': file_path
+        }
     else:
         # Read Excel with tab detection
         df = read_excel_with_tab_detection(file_path)
@@ -314,7 +341,7 @@ def read_broker_file(file_path: str) -> Dict:
 
 def discover_all_files(data_dir: str) -> List[str]:
     """
-    Discover all Excel files in the data directory.
+    Discover all supported files (Excel, CSV, PDF) in the data directory.
     
     Args:
         data_dir: Root data directory
@@ -326,7 +353,7 @@ def discover_all_files(data_dir: str) -> List[str]:
     
     for root, dirs, files in os.walk(data_dir):
         for file in files:
-            if file.endswith(('.xlsx', '.xls', '.csv')):
+            if file.endswith(('.xlsx', '.xls', '.csv', '.pdf')):
                 file_paths.append(os.path.join(root, file))
     
     return file_paths
