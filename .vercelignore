@@ -1,6 +1,6 @@
 # Ignore backend Python files
 *.py
-src/
+/src/
 flask_backend.py
 requirements.txt
 Dockerfile
@@ -21,3 +21,5 @@ TECHNICAL_DOCUMENTATION.md
 
 # Keep only frontend
 !frontend/
+!frontend/src/
+!frontend/src/**
