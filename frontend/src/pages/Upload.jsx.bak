@@ -1,0 +1,244 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Card,
+  Form,
+  Input,
+  Select,
+  Upload,
+  Button,
+  message,
+  Alert,
+  Space,
+  List,
+  Tag,
+} from 'antd';
+import {
+  UploadOutlined,
+  InboxOutlined,
+  DeleteOutlined,
+  CheckCircleOutlined,
+} from '@ant-design/icons';
+import axios from 'axios';
+
+const { Dragger } = Upload;
+const { Option } = Select;
+
+const API_BASE_URL = 'http://localhost:5000';
+
+const UploadPage = () => {
+  const [form] = Form.useForm();
+  const [fileList, setFileList] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+
+  const uploadProps = {
+    multiple: true,
+    fileList,
+    beforeUpload: (file) => {
+      // Check file type - accept Excel and CSV files
+      const isValidFile =
+        file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+        file.type === 'application/vnd.ms-excel' ||
+        file.type === 'text/csv' ||
+        file.name.endsWith('.xlsx') ||
+        file.name.endsWith('.xls') ||
+        file.name.endsWith('.csv');
+
+      if (!isValidFile) {
+        message.error(`${file.name} is not a valid Excel or CSV file`);
+        return Upload.LIST_IGNORE;
+      }
+
+      setFileList((prev) => [...prev, file]);
+      return false;
+    },
+    onRemove: (file) => {
+      setFileList((prev) => prev.filter((f) => f.uid !== file.uid));
+    },
+  };
+
+  const handleSubmit = async (values) => {
+    if (fileList.length === 0) {
+      message.error('Please select at least one file');
+      return;
+    }
+
+    setUploading(true);
+    setUploadSuccess(false);
+
+    try {
+      const formData = new FormData();
+      formData.append('client_id', values.client_id);
+      formData.append('broker', values.broker || 'Unknown_Platform');
+      
+      fileList.forEach((file) => {
+        formData.append('files', file);
+      });
+
+      const response = await axios.post(`${API_BASE_URL}/api/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      message.success(response.data.message);
+      setUploadSuccess(true);
+      
+      // Reset form
+      form.resetFields();
+      setFileList([]);
+      
+      setTimeout(() => setUploadSuccess(false), 5000);
+      
+    } catch (error) {
+      message.error(error.response?.data?.detail || 'Upload failed');
+      console.error(error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div>
+      <h1>Upload Client Data</h1>
+
+      <Alert
+        message="Upload Instructions"
+        description={
+          <div>
+            <p>1. Enter the Client ID (e.g., C001, C002, or just 1, 2)</p>
+            <p>2. Select the broker/platform for these files</p>
+            <p>3. Upload files containing trade data, capital gains, or holdings</p>
+            <p>4. Supported file types: .xlsx, .xls, .csv</p>
+            <p>5. CSV files should have proper column headers in the first row</p>
+            <p>6. To upload files from multiple platforms, submit each platform separately</p>
+          </div>
+        }
+        type="info"
+        showIcon
+        style={{ marginBottom: 24 }}
+      />
+
+      {uploadSuccess && (
+        <Alert
+          message="Upload Successful!"
+          description="Files uploaded successfully. Go to Dashboard to generate reports."
+          type="success"
+          showIcon
+          icon={<CheckCircleOutlined />}
+          closable
+          style={{ marginBottom: 24 }}
+        />
+      )}
+
+      <Card>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+        >
+          <Form.Item
+            label="Client ID"
+            name="client_id"
+            rules={[
+              { required: true, message: 'Please enter client ID' },
+              {
+                pattern: /^(C\d{3,}|\d+)$/,
+                message: 'Client ID should be in format C001 or just 1',
+              },
+            ]}
+          >
+            <Input
+              placeholder="e.g., C001 or 1"
+              size="large"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Broker / Platform"
+            name="broker"
+            rules={[
+              { required: true, message: 'Please select a broker' },
+            ]}
+          >
+            <Select
+              placeholder="Select broker/platform"
+              size="large"
+              showSearch
+            >
+              <Option value="Zerodha">Zerodha</Option>
+              <Option value="Groww">Groww</Option>
+              <Option value="HDFC_Bank">HDFC Bank</Option>
+              <Option value="ICICI_Direct">ICICI Direct</Option>
+              <Option value="Charles_Schwab">Charles Schwab</Option>
+              <Option value="Fidelity">Fidelity</Option>
+              <Option value="Angel_One">Angel One</Option>
+              <Option value="Upstox">Upstox</Option>
+              <Option value="Other">Other</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item label="Upload Files">
+            <Dragger {...uploadProps} style={{ padding: 20 }}>
+              <p className="ant-upload-drag-icon">
+                <InboxOutlined style={{ fontSize: 48, color: '#1890ff' }} />
+              </p>
+              <p className="ant-upload-text">
+                Click or drag files to this area to upload
+              </p>
+              <p className="ant-upload-hint">
+                Support for multiple file upload. Accepts .xlsx, .xls, and .csv files.
+              </p>
+            </Dragger>
+          </Form.Item>
+
+          {fileList.length > 0 && (
+            <Form.Item label="Selected Files">
+              <List
+                size="small"
+                bordered
+                dataSource={fileList}
+                renderItem={(file) => (
+                  <List.Item
+                    actions={[
+                      <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={() =>
+                          setFileList((prev) => prev.filter((f) => f.uid !== file.uid))
+                        }
+                      />,
+                    ]}
+                  >
+                    <Space>
+                      <Tag color="blue">{file.name}</Tag>
+                      <span style={{ color: '#888' }}>
+                        {(file.size / 1024).toFixed(2)} KB
+                      </span>
+                    </Space>
+                  </List.Item>
+                )}
+              />
+            </Form.Item>
+          )}
+
+          <Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<UploadOutlined />}
+              loading={uploading}
+              size="large"
+              block
+            >
+              {uploading ? 'Uploading...' : 'Upload Files'}
+            </Button>
+          </Form.Item>
+        </Form>
+      </Card>
+    </div>
+  );
+};
+
+export default UploadPage;
