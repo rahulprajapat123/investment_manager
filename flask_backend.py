@@ -42,6 +42,11 @@ def root():
         "version": "1.0.0"
     })
 
+@app.route('/favicon.ico')
+def favicon():
+    # Return 204 No Content to stop favicon 404 errors
+    return '', 204
+
 @app.route('/api/clients', methods=['GET'])
 def get_clients():
     try:
