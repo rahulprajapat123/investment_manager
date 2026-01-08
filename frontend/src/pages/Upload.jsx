@@ -195,7 +195,7 @@ const UploadPage = () => {
           <Option value="Groww">Groww</Option>
           <Option value="HDFC_Bank">HDFC Bank</Option>
           <Option value="ICICI_Direct">ICICI Direct</Option>
-          <Option value="ICICI_Direct">ICICI Direct</Option>
+          
           <Option value="Charles_Schwab">Charles Schwab</Option>
           <Option value="Fidelity">Fidelity</Option>
           <Option value="Angel_One">Angel One</Option>
