@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Layout, Menu, theme } from 'antd';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import {
   HomeOutlined,
   UploadOutlined,
@@ -111,6 +112,7 @@ function App() {
             Portfolio Analytics ©{new Date().getFullYear()} Created with FastAPI + React
           </Footer>
         </Layout>
+        <SpeedInsights />
       </Layout>
     </Router>
   );
